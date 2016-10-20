@@ -1,0 +1,97 @@
+<apex:page standardController="Bouquet__c" extensions="BouquetCreationExtension_V1" >
+    <apex:form >
+        
+        <!-- Used to display Section Header based on Bouquet Record Id -->  
+        <apex:sectionHeader subtitle="{!IF(Bouquet__c.Id == null,'New Bouquet', Bouquet__c.Name)}" title="Bouquet Wizard"/>
+        <!-- Used to display any error messages -->
+        <apex:Pagemessages id="errorMessages"/>                      
+        
+        <apex:pageBlock mode="edit">
+            <!-- Save and Cancel buttons will be displayed only on top of the page -->
+            <apex:pageBlockButtons >
+                <!-- Custom Save function invoked to create/update/delete bid record based on Amount value -->
+                <apex:commandButton value="Save" action="{!saveBouquet}"/> 
+                <!--Validation rules are skipped for cancel button-->
+                <apex:commandButton value="Cancel" action="{!cancel}" immediate="true"/> 
+            </apex:pageBlockButtons>
+            
+            <!-- Prerequiresite data field on Bouquet are required on Bouquet Wizard -->
+            <apex:pageblockSection title="Bouquet Details" columns="2" collapsible="false"  dir="LTL">
+                <apex:inputField value="{!Bouquet__c.Customer__c}" required="true"/>
+                <apex:inputField value="{!Bouquet__c.Delivery_Date__c}" required="true"/>
+            </apex:pageblockSection>
+            <apex:pageblockSection columns="1">
+                <apex:inputField style="width:620px;height:55px"   required="true"  value="{!Bouquet__c.Deliver_To__c}"  /> 
+                <apex:inputField style="width:620px;height:55px"   required="true"  value="{!Bouquet__c.Message__c}"  /> 
+            </apex:pageblockSection>
+
+            <!-- This section will be used to display Summary Chart Dynamically whenever filter or pagination buttons are clicked-->       
+            <apex:pageBlockSection title="Summary" columns="2"  collapsible="false" id="SummaryChartSection">  
+                <apex:outputLabel ></apex:outputLabel>
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel > Total Cost </apex:outputLabel>     
+                    <apex:outputLabel > {!bouquetCostLabel} </apex:outputLabel>    
+                </apex:pageBlockSectionItem>
+               
+                <!-- Chart is displayed based on the boolean variable displaySummaryChart and dynamic Wrapper Data built in the controller-->      
+                <apex:outputPanel rendered="{!displaySummaryChart}">       
+                    <apex:chart height="350" width="450"  data="{!summaryChartDataList}">       
+                        <apex:pieSeries dataField="quantity" labelField="color" colorSet="{!flowerColorCodeString}"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;       
+                        <apex:legend position="right"/>        
+                    </apex:chart>
+                    
+                </apex:outputPanel>     
+                
+                <!--Message will be displayed to user if no bids based on boolean variable bidChartDisplay-->       
+                <apex:outputPanel rendered="{!!displaySummaryChart }">       
+                    <apex:pageMessage summary="No Flowers have been added to this Bouquet" severity="0" />      
+                </apex:outputPanel> 
+                
+            </apex:pageblockSection>
+
+            <!-- To Block Pagination if Amount is blank while pagination buttons are clicked/category filter is applied -->
+            <apex:actionRegion > 
+                <apex:pageBlockSection title="Products" columns="1"  collapsible="false" id="categoriesSection">
+                    
+                    <!-- Filter Products based on category -->
+                    <apex:selectList value="{!selectedFamily}" size="1" label="Flower Family">
+                        <apex:actionSupport event="onchange"  action="{!fetchItemsByCategory}" reRender="productsTable,errorMessages,SummaryChartSection,pageButtons"/>
+                        <apex:selectOptions value="{!categories}"/>
+                    </apex:selectList>
+
+                    <!-- Display all Items based on the BloomProductWrapperList -->
+                    <apex:pageBlockTable value="{!BloomProductWrapperList}" var="item" id="productsTable">
+                        <apex:column headerValue="Quantity" >
+                            <apex:inputField value="{!item.bloomObj.Quantity__c}" required="true" style="width:50px"/>
+                        </apex:column>
+                        <apex:column headerValue="Flower">
+                            <!-- Navigate to Item record detail page in other tab--> 
+                            <apex:outputLink value="/{!item.productObj.Id}" target="_blank">
+                                <apex:outputText value="{!item.productObj.Name}"/>
+                            </apex:outputLink>
+                        </apex:column>
+                        <apex:column headerValue="Color">
+                            <apex:outputpanel style="background-color: {!item.productObj.HTML_Color_Code__c}; width:70px; height:17px;" layout="block">
+                                <apex:outputLabel value="{!item.productObj.Color__c}" />
+                            </apex:outputpanel>
+                        </apex:column>
+                        <apex:column value="{!item.productObj.Family}" headerValue="Flower Family"/>
+                        <apex:column value="{!item.productObj.Cost__c}" headerValue="Cost"/>
+                        <apex:column value="{!item.productObj.Inventory_Remaining__c}" headerValue="Inventory Remaining"/>
+                        <apex:column value="{!item.productObj.IsActive}" headerValue="Active"/>
+                    </apex:pageBlockTable>
+                </apex:pageBlockSection>
+                
+                <!-- Buttons displayed for paginating to various pages and display number of pages-->
+                <apex:panelGrid columns="5" style="margin:auto" id="pageButtons">
+                    <apex:commandButton status="loadStatus" action="{!first}" disabled="{!!hasPrevious}" value="|< First" reRender="categoriesSection,productsTable,pageButtons,SummaryChartSection" />
+                    <apex:commandButton status="loadStatus" action="{!previous}" disabled="{!!hasPrevious}" value="Previous" reRender="categoriesSection,productsTable,pageButtons,SummaryChartSection" />
+                    <apex:outputlabel value="Page {!pageNumber} of {!IF ( totalPages == 0, 1, totalPages)}" />
+                    <apex:commandButton status="loadStatus" action="{!next}" disabled="{!!hasNext}" value="Next " reRender="categoriesSection,productsTable,pageButtons,SummaryChartSection" />
+                    <apex:commandButton status="loadStatus" action="{!last}" disabled="{!!hasNext}" value="Last >|"  reRender="categoriesSection,productsTable,pageButtons,SummaryChartSection" />
+                </apex:panelGrid>
+                
+            </apex:actionRegion> 
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
